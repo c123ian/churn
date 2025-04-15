@@ -363,6 +363,50 @@ def serve():
             Link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/daisyui@3.9.2/dist/full.css"),
             Link(rel="stylesheet", href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css"),
             Script(src="https://unpkg.com/htmx.org@1.9.10"),
+            # Add custom theme styles from https://daisyui.com/theme-generator/
+            Style("""
+                :root {
+                --color-base-100: oklch(98% 0.002 247.839);
+                --color-base-200: oklch(96% 0.003 264.542);
+                --color-base-300: oklch(92% 0.006 264.531);
+                --color-base-content: oklch(21% 0.034 264.665);
+                --color-primary: oklch(0% 0 0);
+                --color-primary-content: oklch(100% 0 0);
+                --color-secondary: oklch(62% 0.214 259.815);
+                --color-secondary-content: oklch(97% 0.014 254.604);
+                --color-accent: oklch(62% 0.214 259.815);
+                --color-accent-content: oklch(97% 0.014 254.604);
+                --color-neutral: oklch(13% 0.028 261.692);
+                --color-neutral-content: oklch(98% 0.002 247.839);
+                --color-info: oklch(58% 0.158 241.966);
+                --color-info-content: oklch(97% 0.013 236.62);
+                --color-success: oklch(62% 0.194 149.214);
+                --color-success-content: oklch(98% 0.018 155.826);
+                --color-warning: oklch(66% 0.179 58.318);
+                --color-warning-content: oklch(98% 0.022 95.277);
+                --color-error: oklch(59% 0.249 0.584);
+                --color-error-content: oklch(97% 0.014 343.198);
+                --radius-selector: 0rem;
+                --radius-field: 0.5rem;
+                --radius-box: 2rem;
+                --size-selector: 0.25rem;
+                --size-field: 0.25rem;
+                --border: 1px;
+                }
+
+                /* Custom styling for better contrast */
+                .text-purple-700 {
+                    color: oklch(54% 0.25 280);
+                }
+                
+                .bg-custom-dark {
+                    background-color: oklch(37% 0 0);
+                }
+                
+                .custom-border {
+                    border-color: var(--color-base-300);
+                }
+            """),
         )
     )
     
@@ -472,7 +516,7 @@ def serve():
         
         # Controls panel
         controls_panel = Div(
-            H2("Customer Profile", cls="text-xl font-bold mb-4"),
+            H2("Customer Profile", cls="text-xl font-bold mb-4 text-purple-700"),
             customer_name_input,
             monthly_charges_slider,
             Div(
@@ -489,15 +533,15 @@ def serve():
                 hx_target="#email-content",
                 hx_indicator="#loading-indicator"
             ),
-            cls="w-full md:w-1/2 bg-white p-6 rounded-lg shadow"
+            cls="w-full md:w-1/2 bg-base-100 p-6 rounded-lg shadow-lg custom-border border"
         )
         
         # Email preview panel with feedback buttons
         email_preview = Div(
-            H2("Generated Email", cls="text-xl font-bold mb-4"),
+            H2("Generated Email", cls="text-xl font-bold mb-4 text-purple-700"),
             Div(
                 Div(
-                    cls="loading loading-spinner loading-lg",
+                    cls="loading loading-spinner loading-lg text-primary",
                     id="loading-indicator"
                 ),
                 cls="flex justify-center items-center h-12 hidden"
@@ -510,7 +554,7 @@ def serve():
             ),
             Textarea(
                 placeholder="Your generated email will appear here...",
-                cls="textarea textarea-bordered w-full h-96",
+                cls="textarea textarea-bordered w-full h-96 bg-base-200 text-base-content",
                 id="email-content",
                 readonly="readonly"
             ),
@@ -533,14 +577,14 @@ def serve():
                 Div(
                     Button(
                         "Copy to Clipboard",
-                        cls="btn btn-outline btn-sm",
+                        cls="btn btn-outline btn-accent btn-sm",
                         hx_on_click="navigator.clipboard.writeText(document.getElementById('email-content').value); this.innerText = 'Copied!'; setTimeout(() => this.innerText = 'Copy to Clipboard', 2000)"
                     ),
                     cls="ml-auto"
                 ),
                 cls="mt-4 flex justify-between items-center"
             ),
-            cls="w-full md:w-1/2 bg-white p-6 rounded-lg shadow"
+            cls="w-full md:w-1/2 bg-base-100 p-6 rounded-lg shadow-lg custom-border border"
         )
         
         # Add script for form handling
@@ -672,7 +716,7 @@ def serve():
         return Title("Telecom Churn Prevention Email Generator"), Main(
             form_script,
             Div(
-                H1("Telecom Churn Prevention Email Generator", cls="text-2xl font-bold text-center mb-6"),
+                H1("Telecom Churn Prevention Email Generator", cls="text-2xl font-bold text-center mb-6 text-purple-700"),
                 P("Customize the customer profile to generate a personalized retention email.", 
                   cls="text-center mb-8"),
                 Div(
@@ -682,7 +726,9 @@ def serve():
                 ),
                 cls="container mx-auto px-4 py-8 max-w-6xl"
             ),
-            cls="min-h-screen bg-gray-100"
+            cls="min-h-screen bg-custom-dark",
+            # Add data-theme attribute to apply the custom theme
+            data_theme="dark"
         )
     
     #################################################
