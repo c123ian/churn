@@ -434,7 +434,12 @@ def serve():
         
         # Monthly charges slider
         monthly_charges_slider = Div(
-            Label("Monthly Charges: $<span id='charges-value'>50</span>", cls="block text-sm font-medium mb-2"),
+            Label("Monthly Charges:", cls="block text-sm font-medium mb-2"),
+            Div(
+                Span("$", cls="text-sm mr-1"),
+                Span("50", id="charges-value", cls="text-sm font-medium"),
+                cls="flex items-center mb-2"
+            ),
             Div(
                 Input(
                     type="range",
