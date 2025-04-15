@@ -172,6 +172,7 @@ def setup_database(db_path: str):
             customer_profile TEXT NOT NULL,
             email_content TEXT,
             status TEXT DEFAULT 'generated',
+            feedback TEXT DEFAULT NULL, 
             created_at DATETIME DEFAULT CURRENT_TIMESTAMP
         )
     """)
@@ -523,7 +524,7 @@ def serve():
             cls="w-full md:w-1/2 bg-white p-6 rounded-lg shadow"
         )
         
-        # Email preview panel
+        # Email preview panel with feedback buttons
         email_preview = Div(
             H2("Generated Email", cls="text-xl font-bold mb-4"),
             Div(
@@ -533,6 +534,12 @@ def serve():
                 ),
                 cls="flex justify-center items-center h-12 hidden"
             ),
+            Input(
+                type="hidden",
+                id="current-email-id",
+                name="current_email_id",
+                value=""
+            ),
             Textarea(
                 placeholder="Your generated email will appear here...",
                 cls="textarea textarea-bordered w-full h-96",
@@ -540,12 +547,30 @@ def serve():
                 readonly="readonly"
             ),
             Div(
-                Button(
-                    "Copy to Clipboard",
-                    cls="btn btn-outline btn-sm",
-                    hx_on_click="navigator.clipboard.writeText(document.getElementById('email-content').value); this.innerText = 'Copied!'; setTimeout(() => this.innerText = 'Copy to Clipboard', 2000)"
+                Div(
+                    Span("Rate this email:", cls="text-sm mr-2"),
+                    Button(
+                        "👍",
+                        cls="btn btn-outline btn-sm mr-2",
+                        id="thumbs-up-button"
+                    ),
+                    Button(
+                        "👎",
+                        cls="btn btn-outline btn-sm mr-4",
+                        id="thumbs-down-button"
+                    ),
+                    Span("", id="feedback-message", cls="text-sm"),
+                    cls="flex items-center"
                 ),
-                cls="mt-4 flex justify-end"
+                Div(
+                    Button(
+                        "Copy to Clipboard",
+                        cls="btn btn-outline btn-sm",
+                        hx_on_click="navigator.clipboard.writeText(document.getElementById('email-content').value); this.innerText = 'Copied!'; setTimeout(() => this.innerText = 'Copy to Clipboard', 2000)"
+                    ),
+                    cls="ml-auto"
+                ),
+                cls="mt-4 flex justify-between items-center"
             ),
             cls="w-full md:w-1/2 bg-white p-6 rounded-lg shadow"
         )
@@ -569,7 +594,7 @@ def serve():
                 return formData;
             }
             
-            // Only generate email when the button is clicked
+            // Generate email when the button is clicked
             document.getElementById('generate-button').addEventListener('click', function(event) {
                 event.preventDefault(); // Prevent default form submission
                 
@@ -585,10 +610,25 @@ def serve():
                     },
                     body: JSON.stringify(formData)
                 })
-                .then(response => response.text())
+                .then(response => response.json())  // Now expecting JSON response
                 .then(data => {
-                    document.getElementById('email-content').value = data;
+                    // Update email content
+                    document.getElementById('email-content').value = data.email_content;
+                    
+                    // Store email ID in hidden field
+                    document.getElementById('current-email-id').value = data.email_id;
+                    
+                    // Reset feedback state
+                    document.getElementById('thumbs-up-button').disabled = false;
+                    document.getElementById('thumbs-down-button').disabled = false;
+                    document.getElementById('feedback-message').innerText = '';
+                    
                     // Hide loading indicator
+                    document.getElementById('loading-indicator').parentElement.classList.add('hidden');
+                })
+                .catch(error => {
+                    console.error('Error generating email:', error);
+                    document.getElementById('email-content').value = 'Error generating email. Please try again.';
                     document.getElementById('loading-indicator').parentElement.classList.add('hidden');
                 });
             });
@@ -597,6 +637,67 @@ def serve():
             document.getElementById('charges-slider').addEventListener('input', function() {
                 document.getElementById('charges-value').innerText = this.value;
             });
+            
+            // Handle feedback button clicks
+            document.getElementById('thumbs-up-button').addEventListener('click', function() {
+                submitFeedback('positive');
+            });
+            
+            document.getElementById('thumbs-down-button').addEventListener('click', function() {
+                submitFeedback('negative');
+            });
+            
+            // Function to submit feedback
+            function submitFeedback(feedbackType) {
+                const emailId = document.getElementById('current-email-id').value;
+                
+                // Validate that we have an email ID
+                if (!emailId) {
+                    document.getElementById('feedback-message').innerText = 'Please generate an email first';
+                    return;
+                }
+                
+                // Show feedback is being submitted
+                document.getElementById('feedback-message').innerText = 'Submitting...';
+                
+                // Disable buttons during submission
+                document.getElementById('thumbs-up-button').disabled = true;
+                document.getElementById('thumbs-down-button').disabled = true;
+                
+                fetch('/submit-feedback', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        feedback: feedbackType,
+                        emailId: emailId
+                    })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // Show success message
+                    document.getElementById('feedback-message').innerText = data.message;
+                    
+                    // Clear message after some time
+                    setTimeout(function() {
+                        document.getElementById('feedback-message').innerText = '';
+                    }, 3000);
+                })
+                .catch(error => {
+                    console.error('Error submitting feedback:', error);
+                    document.getElementById('feedback-message').innerText = 'Error submitting feedback';
+                    
+                    // Re-enable buttons on error
+                    document.getElementById('thumbs-up-button').disabled = false;
+                    document.getElementById('thumbs-down-button').disabled = false;
+                });
+            }
         });
         """)
         
@@ -634,12 +735,92 @@ def serve():
                 # Fallback to rule-based generator if LLM fails
                 email_content = generate_email_content(customer_profile)
             
-            # Return the generated email
-            return HTMLResponse(email_content)
+            # Get the email ID from the database (most recent)
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT id FROM emails ORDER BY created_at DESC LIMIT 1")
+            result = cursor.fetchone()
+            email_id = result[0] if result else None
+            conn.close()
             
+            # Return both the email content and ID
+            response_data = {
+                "email_content": email_content,
+                "email_id": email_id
+            }
+            
+            return JSONResponse(response_data)
+                
         except Exception as e:
             print(f"Error generating email: {e}")
-            return HTMLResponse(f"Error generating email: {str(e)}", status_code=500)
+            return JSONResponse({"error": str(e)}, status_code=500)
+    
+    #################################################
+    # Submit Feedback API Endpoint
+    #################################################
+    @rt("/submit-feedback", methods=["POST"])
+    async def submit_feedback(request):
+        """API endpoint to submit feedback for generated emails"""
+        try:
+            # Get feedback data from request
+            data = await request.json()
+            feedback = data.get("feedback")
+            email_id = data.get("emailId")  # Get email ID from request
+            
+            print(f"Received feedback request: {feedback} for email {email_id}")
+            
+            # Validate input
+            if not feedback or feedback not in ["positive", "negative"]:
+                return JSONResponse({"success": False, "message": "Invalid feedback value"}, status_code=400)
+            
+            # If no email ID provided, get the latest
+            if not email_id:
+                conn = sqlite3.connect(DB_PATH)
+                cursor = conn.cursor()
+                cursor.execute("SELECT id FROM emails ORDER BY created_at DESC LIMIT 1")
+                result = cursor.fetchone()
+                conn.close()
+                
+                if not result:
+                    return JSONResponse({"success": False, "message": "No email found to attach feedback"}, status_code=404)
+                
+                email_id = result[0]
+            
+            # Update the email record with feedback
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            
+            # Check if email exists
+            cursor.execute("SELECT id FROM emails WHERE id = ?", (email_id,))
+            email_exists = cursor.fetchone()
+            
+            if not email_exists:
+                conn.close()
+                return JSONResponse({"success": False, "message": "Email not found"}, status_code=404)
+            
+            # Update feedback
+            cursor.execute(
+                "UPDATE emails SET feedback = ? WHERE id = ?",
+                (feedback, email_id)
+            )
+            
+            conn.commit()
+            conn.close()
+            
+            # Log success
+            print(f"✅ Saved feedback '{feedback}' for email ID: {email_id}")
+            
+            # Return success response with message
+            feedback_message = "Thanks for your positive feedback! 👍" if feedback == "positive" else "Thanks for your feedback. We'll improve! 👎"
+            return JSONResponse({
+                "success": True, 
+                "message": feedback_message,
+                "email_id": email_id
+            })
+            
+        except Exception as e:
+            print(f"⚠️ Error submitting feedback: {e}")
+            return JSONResponse({"success": False, "message": f"Error: {str(e)}"}, status_code=500)
     
     # Return the FastHTML app
     return fasthtml_app
