@@ -47,7 +47,7 @@ try:
 except modal.exception.NotFoundError:
     email_volume = modal.Volume.persisted("email_volume")
 
-# Generation prompt template
+# Generation prompt template - Updated to add Final_Answer instruction and exact signature format
 EMAIL_GENERATION_PROMPT = """
 You are an expert in customer retention for a telecom company. Your task is to generate a personalized email 
 for a customer at risk of churning based on their profile information.
@@ -72,6 +72,17 @@ The email should be tailored based on the customer profile that follows:
 
 Include specific retention strategies from this list where appropriate:
 {retention_strategies}
+
+IMPORTANT FORMATTING RULES:
+1. Always end with the final draft of the email as Final_Answer: followed by the complete email.
+2. Always end your email with EXACTLY the following signature format:
+   Warm regards,
+
+   Sarah Thompson
+   Customer Retention Team
+   Vodafone
+
+3. Do not include ANY text after the signature.
 """
 
 # Mapping of risk factors to retention strategies
@@ -131,6 +142,42 @@ RISK_FACTOR_STRATEGIES = {
         "Bundled entertainment package"
     ]
 }
+
+# Function to extract email with specific start and end boundaries
+def extract_final_answer(text):
+    """
+    Extract the content between specific boundaries:
+    - Start: After "Final_Answer:" marker
+    - End: At the end of "Customer Retention Team\nVodafone" signature
+    
+    This ensures we only display the final formatted email without any additional text.
+    """
+    # First, extract content after Final_Answer marker
+    if "Final_Answer:" in text:
+        email_text = text.split("Final_Answer:", 1)[1].strip()
+    else:
+        email_text = text  # Use original if marker not found
+    
+    # Next, ensure we cut off at the end of the signature
+    if "Customer Retention Team" in email_text:
+        # Find the signature and include "Vodafone" line that follows it
+        signature_pos = email_text.find("Customer Retention Team")
+        end_pos = email_text.find("\n", signature_pos)
+        
+        # If there's content after "Vodafone", trim it off
+        if end_pos > 0:
+            # Include the line with "Vodafone" but nothing after
+            vodafone_pos = email_text.find("Vodafone", signature_pos)
+            if vodafone_pos > 0:
+                end_pos = email_text.find("\n", vodafone_pos)
+                if end_pos > 0:
+                    email_text = email_text[:end_pos]
+                else:
+                    # If no newline after Vodafone, include to the end
+                    pass
+        
+    # Return the properly bounded email
+    return email_text
 
 # Function to save email to file
 def save_email_file(email_id, customer_profile, email_content):
@@ -273,7 +320,10 @@ def generate_email_llm(customer_profile: Dict[str, Any]) -> str:
     # Generate the email
     print("Generating email content...")
     output = generation_pipe(prompt)
-    email_content = output[0]["generated_text"][len(prompt):].strip()
+    raw_email_content = output[0]["generated_text"][len(prompt):].strip()
+    
+    # Extract just the email content after Final_Answer:
+    email_content = extract_final_answer(raw_email_content)
     
     # Save the generated email
     profile_json = json.dumps(customer_profile)
@@ -293,89 +343,7 @@ def generate_email_llm(customer_profile: Dict[str, Any]) -> str:
         conn.close()
     except Exception as e:
         print(f"⚠️ Error saving to database: {e}")
-    
-    return email_content
-
-# Fallback email generator (non-LLM)
-def generate_email_content(customer_profile: Dict[str, Any]) -> str:
-    """Generate email content based on customer profile (non-LLM fallback)"""
-    # Extract customer name
-    customer_name = customer_profile.get("customerName", "Valued Customer")
-    
-    # Determine discount percentage based on monthly charges
-    monthly_charges = customer_profile.get("monthlyCharges", 0)
-    discount_percentage = "15%"
-    if monthly_charges > 75:
-        discount_percentage = "30%"
-    elif monthly_charges > 50:
-        discount_percentage = "25%"
-    elif monthly_charges > 25:
-        discount_percentage = "20%"
-    
-    # Create subject line based on key factors
-    if customer_profile.get("monthToMonth", False) and monthly_charges > 75:
-        subject = f"Exclusive offer: Save {discount_percentage} on your monthly bill"
-    elif customer_profile.get("noOnlineSecurity", False):
-        subject = "Protect your digital life with our premium security package"
-    elif customer_profile.get("lowTenure", False):
-        subject = f"Welcome to the family, {customer_name}! Special offers inside"
-    else:
-        subject = "Special savings tailored just for you"
-    
-    # Create personalized greeting
-    greeting = f"Dear {customer_name},"
-    
-    # Create introduction based on tenure and spending
-    if customer_profile.get("lowTenure", False):
-        intro = "We're thrilled to have you as part of our Vodafone family and want to ensure you're getting the most from your service."
-    elif monthly_charges > 75:
-        intro = f"As one of our premium customers, we value your loyalty and would like to thank you with some exclusive offers that could significantly reduce your monthly spend of ${monthly_charges}."
-    else:
-        intro = "We appreciate your continued loyalty and have put together some special offers tailored specifically to enhance your experience."
-    
-    # Create benefits based on active factors (limit to 3-4)
-    benefits = []
-    
-    if customer_profile.get("monthToMonth", False) and monthly_charges > 50:
-        discounted_amount = round(monthly_charges * (1 - int(discount_percentage.strip('%')) / 100))
-        benefits.append(f"Switch from your month-to-month plan to our annual commitment and receive a {discount_percentage} discount, bringing your monthly bill down to ${discounted_amount}.")
-    
-    if customer_profile.get("fiberOptic", False):
-        benefits.append("Upgrade to our premium router at no extra cost and receive a complimentary technical assessment to optimize your fiber connection speed and reliability.")
-    
-    if customer_profile.get("noOnlineSecurity", False):
-        benefits.append("Protect your digital life with 6 months of our premium security package at no cost, including antivirus, anti-phishing, and identity protection services.")
-    
-    if customer_profile.get("noPartner", False):
-        benefits.append("Bring a friend to our network and you'll both receive three months of service at half price! It's our way of saying thanks for spreading the word.")
-    
-    if customer_profile.get("seniorCitizen", False):
-        benefits.append("As a distinguished member of our community, you're eligible for our senior package with simplified billing, dedicated tech support, and a 15% lifetime discount.")
-    
-    # Limit to top 3-4 benefits
-    benefits = benefits[:4]
-    
-    # Create call to action
-    if customer_profile.get("monthToMonth", False) and monthly_charges > 50:
-        cta = f"To take advantage of the {discount_percentage} discount, simply reply to this email or call us at 0800-VODAFONE by May 1st."
-    elif customer_profile.get("noOnlineSecurity", False):
-        cta = "Activate your free security package today by visiting vodafone.com/security or calling our customer service team."
-    else:
-        cta = "To claim these exclusive offers, please call our dedicated customer care line at 0800-VODAFONE or visit your account dashboard."
-    
-    # Create closing and signature
-    closing = "We value your business and look forward to continuing to serve your telecommunications needs."
-    signature = "Warm regards,\n\nSarah Thompson\nCustomer Retention Team\nVodafone"
-    
-    # Compile the complete email
-    email_content = f"Subject: {subject}\n\n{greeting}\n\n{intro}\n\nWe've prepared some exclusive offers just for you:\n"
-    
-    # Add benefits as bullet points
-    for benefit in benefits:
-        email_content += f"• {benefit}\n"
-    
-    # Add call to action, closing and signature
-    email_content += f"\n{cta}\n\n{closing}\n\n{signature}"
+        raise e  # Re-raise to ensure errors bubble up
     
     return email_content
 
@@ -727,13 +695,8 @@ def serve():
             # Get customer profile from request JSON
             customer_profile = await request.json()
             
-            try:
-                # Try to use the LLM-based generator
-                email_content = generate_email_llm.remote(customer_profile)
-            except Exception as llm_error:
-                print(f"⚠️ LLM generation failed: {llm_error}. Using fallback generator.")
-                # Fallback to rule-based generator if LLM fails
-                email_content = generate_email_content(customer_profile)
+            # Generate email using LLM (no fallback)
+            email_content = generate_email_llm.remote(customer_profile)
             
             # Get the email ID from the database (most recent)
             conn = sqlite3.connect(DB_PATH)
