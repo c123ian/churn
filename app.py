@@ -400,7 +400,7 @@ def serve():
                 }
                 
                 .bg-custom-dark {
-                    background-color: oklch(37% 0 0);
+                    background-color: color-base-100;
                 }
                 
                 .custom-border {
@@ -538,7 +538,7 @@ def serve():
                 hx_target="#email-content",
                 hx_indicator="#loading-indicator"
             ),
-            cls="w-full md:w-1/2 bg-base-100 p-6 rounded-lg shadow-lg custom-border border"
+            cls="w-full md:w-1/2 bg-color-base-300 p-6 rounded-lg shadow-lg custom-border border"
         )
         
         # Email preview panel with feedback buttons
