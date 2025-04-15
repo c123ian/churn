@@ -569,9 +569,15 @@ def serve():
                 return formData;
             }
             
-            // Generate initial email on load
-            setTimeout(function() {
+            // Only generate email when the button is clicked
+            document.getElementById('generate-button').addEventListener('click', function(event) {
+                event.preventDefault(); // Prevent default form submission
+                
                 const formData = getFormData();
+                
+                // Show loading indicator
+                document.getElementById('loading-indicator').parentElement.classList.remove('hidden');
+                
                 fetch('/generate-email', {
                     method: 'POST',
                     headers: {
@@ -582,32 +588,14 @@ def serve():
                 .then(response => response.text())
                 .then(data => {
                     document.getElementById('email-content').value = data;
+                    // Hide loading indicator
+                    document.getElementById('loading-indicator').parentElement.classList.add('hidden');
                 });
-            }, 500);
+            });
             
-            // Regenerate email when any form element changes
-            const formElements = document.querySelectorAll('input');
-            formElements.forEach(element => {
-                element.addEventListener('change', function() {
-                    const formData = getFormData();
-                    
-                    // Show loading indicator
-                    document.getElementById('loading-indicator').parentElement.classList.remove('hidden');
-                    
-                    fetch('/generate-email', {
-                        method: 'POST',
-                        headers: {
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(formData)
-                    })
-                    .then(response => response.text())
-                    .then(data => {
-                        document.getElementById('email-content').value = data;
-                        // Hide loading indicator
-                        document.getElementById('loading-indicator').parentElement.classList.add('hidden');
-                    });
-                });
+            // Update the charges value display without triggering email generation
+            document.getElementById('charges-slider').addEventListener('input', function() {
+                document.getElementById('charges-value').innerText = this.value;
             });
         });
         """)
