@@ -1,9 +1,9 @@
 # Telecom Churn Prevention Email Generator
 
-## **App 1: ML Churn Predictor** 
+## **App 1: ML Churn Predictor** :
 ![APP 1](https://github.com/user-attachments/assets/e30fbfa1-a76a-490f-9bda-9e0df2ab3b66)
 
-**App 2: LLM Email Generator**
+## **App 2: LLM Email Generator** :
 ![APP 2](https://github.com/user-attachments/assets/3b067dec-469a-4190-9d70-113aeca34a5f)
 
 
