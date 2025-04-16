@@ -188,27 +188,83 @@ def serve():
                         name="csv_file",
                         accept=".csv",
                         cls="w-full p-2 border border-gray-300 rounded",
-                        required="required"
+                        id="csv-file-input"
                     ),
                     cls="mb-4"
                 ),
                 Div(
                     Button(
+                        Span(cls="loading loading-spinner loading-xs mr-2 hidden", id="button-spinner"),
                         "Predict Churn",
-                        cls="btn btn-primary",
-                        type="submit"
-                    ),
-                    Div(
-                        cls="loading loading-spinner loading-md text-primary ml-4",
-                        id="loading-indicator",
-                        hx_indicator=""
+                        cls="btn btn-primary btn-md w-auto px-6",
+                        id="predict-button",
+                        disabled="disabled",
+                        type="button"
                     ),
                     cls="flex items-center"
                 ),
-                hx_post="/predict",
-                hx_target="#results-container",
-                hx_encoding="multipart/form-data",
-                hx_indicator="#loading-indicator",
+                Script("""
+                document.addEventListener('DOMContentLoaded', function() {
+                    console.log('DOM loaded');
+                    const fileInput = document.getElementById('csv-file-input');
+                    const predictButton = document.getElementById('predict-button');
+                    const buttonSpinner = document.getElementById('button-spinner');
+                    const resultsContainer = document.getElementById('results-container');
+                    
+                    // Enable predict button when file is selected
+                    fileInput.addEventListener('change', function() {
+                        console.log('File selected');
+                        predictButton.disabled = !fileInput.files.length;
+                    });
+                    
+                    // Handle button click
+                    predictButton.addEventListener('click', function() {
+                        console.log('Button clicked');
+                        
+                        // Show loading spinner in button
+                        buttonSpinner.classList.remove('hidden');
+                        predictButton.classList.add('loading-btn');
+                        predictButton.disabled = true;
+                        
+                        // Create form data
+                        const formData = new FormData();
+                        formData.append('csv_file', fileInput.files[0]);
+                        
+                        // Send request
+                        console.log('Sending fetch request');
+                        fetch('/predict', {
+                            method: 'POST',
+                            body: formData
+                        })
+                        .then(response => {
+                            console.log('Response received');
+                            return response.text();
+                        })
+                        .then(html => {
+                            console.log('Processing HTML');
+                            
+                            // Hide loading spinner
+                            buttonSpinner.classList.add('hidden');
+                            predictButton.classList.remove('loading-btn');
+                            predictButton.disabled = false;
+                            
+                            // Update results container with response HTML
+                            resultsContainer.innerHTML = html;
+                        })
+                        .catch(error => {
+                            console.error('Error predicting churn:', error);
+                            
+                            // Hide loading spinner
+                            buttonSpinner.classList.add('hidden');
+                            predictButton.classList.remove('loading-btn');
+                            predictButton.disabled = false;
+                            
+                            alert('Error processing request. Please try again.');
+                        });
+                    });
+                });
+                """),
+                id="upload-form",
                 cls="bg-base-200 p-6 rounded-lg shadow-lg border mb-6"
             ),
             cls="mb-8"
