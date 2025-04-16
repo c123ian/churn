@@ -188,7 +188,7 @@ def serve():
                         name="csv_file",
                         accept=".csv",
                         cls="w-full p-2 border border-gray-300 rounded",
-                        id="csv-file-input"
+                        required="required"
                     ),
                     cls="mb-4"
                 ),
@@ -196,304 +196,39 @@ def serve():
                     Button(
                         "Predict Churn",
                         cls="btn btn-primary",
-                        id="predict-button",
-                        disabled="disabled"
+                        type="submit"
                     ),
                     Div(
-                        cls="loading loading-spinner loading-md text-primary ml-4 hidden",
-                        id="loading-indicator"
+                        cls="loading loading-spinner loading-md text-primary ml-4",
+                        id="loading-indicator",
+                        hx_indicator=""
                     ),
                     cls="flex items-center"
                 ),
-                id="upload-form",
-                method="POST",
-                enctype="multipart/form-data",
+                hx_post="/predict",
+                hx_target="#results-container",
+                hx_encoding="multipart/form-data",
+                hx_indicator="#loading-indicator",
                 cls="bg-base-200 p-6 rounded-lg shadow-lg border mb-6"
             ),
             cls="mb-8"
         )
         
-        # Summary section (initially hidden)
-        summary_section = Div(
-            H2("Churn Prediction Summary", cls="text-xl font-bold mb-4 text-purple-700"),
-            Div(
-                Div(
-                    H3("Total Customers", cls="text-lg font-semibold"),
-                    P("0", id="total-customers", cls="text-2xl font-bold"),
-                    cls="bg-base-200 p-4 rounded"
-                ),
-                Div(
-                    H3("Predicted to Churn", cls="text-lg font-semibold text-error"),
-                    P("0", id="predicted-churn", cls="text-2xl font-bold"),
-                    cls="bg-base-200 p-4 rounded"
-                ),
-                Div(
-                    H3("Predicted to Stay", cls="text-lg font-semibold text-success"),
-                    P("0", id="predicted-retain", cls="text-2xl font-bold"),
-                    cls="bg-base-200 p-4 rounded"
-                ),
-                cls="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"
-            ),
-            cls="bg-base-200 p-6 rounded-lg shadow-lg border mb-6 hidden",
-            id="summary-section"
+        # Results container (will be populated via HTMX)
+        results_container = Div(
+            # Initially empty, will be filled by HTMX
+            P("Upload a CSV file to predict customer churn.", cls="text-center text-gray-500"),
+            id="results-container",
+            cls="bg-base-200 p-6 rounded-lg shadow-lg border"
         )
-        
-        # Results section (initially hidden)
-        results_section = Div(
-            H2("Customer Prediction Results", cls="text-xl font-bold mb-4 text-purple-700"),
-            Table(
-                Thead(
-                    Tr(
-                        Th("Customer ID"),
-                        Th("Prediction"),
-                        Th("Churn Risk"),
-                        Th("Tenure"),
-                        Th("Monthly Charges"),
-                        Th("Contract"),
-                        Th("Actions")
-                    )
-                ),
-                Tbody(
-                    id="results-table-body"
-                ),
-                cls="table table-zebra w-full"
-            ),
-            cls="bg-base-200 p-6 rounded-lg shadow-lg border hidden",
-            id="results-section"
-        )
-        
-        # Customer details modal
-        customer_modal = Div(
-            Div(
-                Div(
-                    H3("Customer Details", cls="text-lg font-bold", id="modal-customer-id"),
-                    Button(
-                        "✕",
-                        cls="btn btn-sm btn-circle absolute right-2 top-2",
-                        onclick="document.getElementById('customer-modal').classList.add('hidden')"
-                    ),
-                    cls="modal-header p-4 border-b"
-                ),
-                Div(
-                    id="modal-content",
-                    cls="p-4"
-                ),
-                Div(
-                    Button(
-                        "Close",
-                        cls="btn",
-                        onclick="document.getElementById('customer-modal').classList.add('hidden')"
-                    ),
-                    cls="modal-footer p-4 border-t"
-                ),
-                cls="modal-box relative"
-            ),
-            cls="modal hidden",
-            id="customer-modal"
-        )
-        
-        # Add script for form handling
-        form_script = Script("""
-        document.addEventListener('DOMContentLoaded', function() {
-            const fileInput = document.getElementById('csv-file-input');
-            const predictButton = document.getElementById('predict-button');
-            const loadingIndicator = document.getElementById('loading-indicator');
-            const summarySection = document.getElementById('summary-section');
-            const resultsSection = document.getElementById('results-section');
-            
-            // Enable predict button when file is selected
-            fileInput.addEventListener('change', function() {
-                predictButton.disabled = !fileInput.files.length;
-            });
-            
-            // Handle form submission
-            document.getElementById('upload-form').addEventListener('submit', function(event) {
-                event.preventDefault();
-                
-                // Show loading indicator
-                loadingIndicator.classList.remove('hidden');
-                predictButton.disabled = true;
-                
-                // Create form data
-                const formData = new FormData();
-                formData.append('csv_file', fileInput.files[0]);
-                
-                // Send request
-                fetch('/predict', {
-                    method: 'POST',
-                    body: formData
-                })
-                .then(response => response.json())
-                .then(data => {
-                    // Hide loading indicator
-                    loadingIndicator.classList.add('hidden');
-                    predictButton.disabled = false;
-                    
-                    if (data.error) {
-                        alert('Error: ' + data.error);
-                        return;
-                    }
-                    
-                    // Update summary
-                    document.getElementById('total-customers').innerText = data.total_customers;
-                    document.getElementById('predicted-churn').innerText = data.predicted_churn;
-                    document.getElementById('predicted-retain').innerText = data.predicted_retain;
-                    summarySection.classList.remove('hidden');
-                    
-                    // Update results table
-                    const tableBody = document.getElementById('results-table-body');
-                    tableBody.innerHTML = '';
-                    
-                    data.results.forEach(customer => {
-                        const row = document.createElement('tr');
-                        
-                        // Set row class based on churn probability
-                        if (customer.churn_probability > 0.7) {
-                            row.className = 'high-risk';
-                        } else if (customer.churn_probability > 0.4) {
-                            row.className = 'medium-risk';
-                        } else {
-                            row.className = 'low-risk';
-                        }
-                        
-                        // Create customer ID cell
-                        const idCell = document.createElement('td');
-                        idCell.innerText = customer.customerID;
-                        row.appendChild(idCell);
-                        
-                        // Create prediction cell
-                        const predictionCell = document.createElement('td');
-                        predictionCell.innerHTML = customer.will_churn ? 
-                            '<span class="text-xl">🚩</span>' : 
-                            '<span class="text-xl">✅</span>';
-                        row.appendChild(predictionCell);
-                        
-                        // Create risk cell
-                        const riskCell = document.createElement('td');
-                        const riskPercent = Math.round(customer.churn_probability * 100);
-                        const riskColor = riskPercent > 70 ? 'text-error' : 
-                                         riskPercent > 40 ? 'text-warning' : 'text-success';
-                        riskCell.innerHTML = `<span class="${riskColor} font-bold">${riskPercent}%</span>`;
-                        row.appendChild(riskCell);
-                        
-                        // Create tenure cell
-                        const tenureCell = document.createElement('td');
-                        tenureCell.innerText = customer.customer_data.tenure;
-                        row.appendChild(tenureCell);
-                        
-                        // Create monthly charges cell
-                        const chargesCell = document.createElement('td');
-                        chargesCell.innerText = '$' + customer.customer_data.MonthlyCharges;
-                        row.appendChild(chargesCell);
-                        
-                        // Create contract cell
-                        const contractCell = document.createElement('td');
-                        contractCell.innerText = customer.customer_data.Contract;
-                        row.appendChild(contractCell);
-                        
-                        // Create actions cell
-                        const actionsCell = document.createElement('td');
-                        const viewButton = document.createElement('button');
-                        viewButton.className = 'btn btn-xs btn-outline';
-                        viewButton.innerText = 'View';
-                        viewButton.addEventListener('click', function() {
-                            showCustomerDetails(customer);
-                        });
-                        actionsCell.appendChild(viewButton);
-                        row.appendChild(actionsCell);
-                        
-                        tableBody.appendChild(row);
-                    });
-                    
-                    resultsSection.classList.remove('hidden');
-                })
-                .catch(error => {
-                    console.error('Error predicting churn:', error);
-                    loadingIndicator.classList.add('hidden');
-                    predictButton.disabled = false;
-                    alert('Error processing request. Please try again.');
-                });
-            });
-            
-            // Function to show customer details in modal
-            window.showCustomerDetails = function(customer) {
-                const modal = document.getElementById('customer-modal');
-                const modalCustomerId = document.getElementById('modal-customer-id');
-                const modalContent = document.getElementById('modal-content');
-                
-                modalCustomerId.innerText = `Customer: ${customer.customerID}`;
-                
-                // Build content HTML
-                let contentHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                        <div class="p-4 border rounded">
-                            <h4 class="font-bold mb-2">Churn Prediction</h4>
-                            <div class="text-2xl font-bold ${customer.will_churn ? 'text-error' : 'text-success'}">
-                                ${customer.will_churn ? '🚩 Likely to Churn' : '✅ Likely to Stay'}
-                            </div>
-                            <div class="mt-2">
-                                <span class="font-bold">Risk Level:</span> ${Math.round(customer.churn_probability * 100)}%
-                            </div>
-                        </div>
-                        <div class="p-4 border rounded">
-                            <h4 class="font-bold mb-2">Customer Overview</h4>
-                            <div><span class="font-bold">Gender:</span> ${customer.customer_data.gender}</div>
-                            <div><span class="font-bold">Senior Citizen:</span> ${customer.customer_data.SeniorCitizen ? 'Yes' : 'No'}</div>
-                            <div><span class="font-bold">Partner:</span> ${customer.customer_data.Partner}</div>
-                            <div><span class="font-bold">Dependents:</span> ${customer.customer_data.Dependents}</div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h4 class="font-bold mb-2">Service Details</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                            <div class="p-4 border rounded">
-                                <div><span class="font-bold">Tenure:</span> ${customer.customer_data.tenure} months</div>
-                                <div><span class="font-bold">Contract:</span> ${customer.customer_data.Contract}</div>
-                                <div><span class="font-bold">Payment Method:</span> ${customer.customer_data.PaymentMethod}</div>
-                                <div><span class="font-bold">Paperless Billing:</span> ${customer.customer_data.PaperlessBilling}</div>
-                            </div>
-                            <div class="p-4 border rounded">
-                                <div><span class="font-bold">Phone Service:</span> ${customer.customer_data.PhoneService}</div>
-                                <div><span class="font-bold">Multiple Lines:</span> ${customer.customer_data.MultipleLines}</div>
-                                <div><span class="font-bold">Internet Service:</span> ${customer.customer_data.InternetService}</div>
-                            </div>
-                            <div class="p-4 border rounded">
-                                <div><span class="font-bold">Online Security:</span> ${customer.customer_data.OnlineSecurity}</div>
-                                <div><span class="font-bold">Online Backup:</span> ${customer.customer_data.OnlineBackup}</div>
-                                <div><span class="font-bold">Device Protection:</span> ${customer.customer_data.DeviceProtection}</div>
-                                <div><span class="font-bold">Tech Support:</span> ${customer.customer_data.TechSupport}</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div class="mb-4">
-                        <h4 class="font-bold mb-2">Financial Information</h4>
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div class="p-4 border rounded">
-                                <div class="text-xl font-bold">Monthly Charges: $${customer.customer_data.MonthlyCharges}</div>
-                                <div>Total Charges: $${customer.customer_data.TotalCharges}</div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                modalContent.innerHTML = contentHTML;
-                modal.classList.remove('hidden');
-            }
-        });
-        """)
         
         return Title("Telecom Churn Predictor"), Main(
-            form_script,
             Div(
                 H1("Telecom Churn Predictor", cls="text-2xl font-bold text-center mb-6 text-purple-700"),
                 P("Upload customer data to predict which customers are at risk of churning.", 
                   cls="text-center mb-8"),
                 file_upload,
-                summary_section,
-                results_section,
-                customer_modal,
+                results_container,
                 cls="container mx-auto px-4 py-8 max-w-6xl"
             ),
             cls="min-h-screen bg-base-100",
@@ -501,31 +236,115 @@ def serve():
         )
     
     #################################################
-    # Predict API Endpoint
+    # Predict Route - Process CSV and Return Results
     #################################################
     @rt("/predict", methods=["POST"])
-    async def api_predict_churn(request):
-        """API endpoint to process CSV and predict churn"""
+    async def predict_endpoint(request):
+        """Process CSV and return results HTML"""
         try:
             # Get CSV file from form data
             form_data = await request.form()
             csv_file = form_data.get('csv_file')
             
             if not csv_file:
-                return JSONResponse({"error": "No CSV file provided"}, status_code=400)
+                return HTMLResponse("<div class='alert alert-error'>No CSV file provided</div>")
             
             # Read CSV content
             csv_content = await csv_file.read()
             csv_text = csv_content.decode('utf-8')
             
             # Call prediction function
-            result = predict_churn.remote(csv_text)
+            prediction_data = predict_churn.remote(csv_text)
             
-            return JSONResponse(result)
+            if "error" in prediction_data:
+                return HTMLResponse(f"<div class='alert alert-error'>{prediction_data['error']}</div>")
+            
+            # Create summary cards HTML
+            summary_html = f"""
+            <h2 class="text-xl font-bold mb-4 text-purple-700">Churn Prediction Summary</h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-base-200 p-4 rounded">
+                    <h3 class="text-lg font-semibold">Total Customers</h3>
+                    <p class="text-2xl font-bold">{prediction_data['total_customers']}</p>
+                </div>
+                <div class="bg-base-200 p-4 rounded">
+                    <h3 class="text-lg font-semibold text-error">Predicted to Churn</h3>
+                    <p class="text-2xl font-bold">{prediction_data['predicted_churn']}</p>
+                </div>
+                <div class="bg-base-200 p-4 rounded">
+                    <h3 class="text-lg font-semibold text-success">Predicted to Stay</h3>
+                    <p class="text-2xl font-bold">{prediction_data['predicted_retain']}</p>
+                </div>
+            </div>
+            """
+            
+            # Create table header HTML
+            table_html = """
+            <h2 class="text-xl font-bold mb-4 text-purple-700">Customer Prediction Results</h2>
+            <div class="overflow-x-auto">
+                <table class="table table-zebra w-full">
+                    <thead>
+                        <tr>
+                            <th>Customer ID</th>
+                            <th>Prediction</th>
+                            <th>Churn Risk</th>
+                            <th>Tenure</th>
+                            <th>Monthly Charges</th>
+                            <th>Contract</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            """
+            
+            # Add table rows
+            for customer in prediction_data["results"]:
+                # Determine risk class and icon
+                risk_class = ""
+                if customer["churn_probability"] > 0.7:
+                    risk_class = "high-risk"
+                elif customer["churn_probability"] > 0.4:
+                    risk_class = "medium-risk"
+                else:
+                    risk_class = "low-risk"
+                
+                churn_icon = "🚩" if customer["will_churn"] else "✅"
+                
+                risk_text_class = ""
+                if customer["churn_probability"] > 0.7:
+                    risk_text_class = "text-error"
+                elif customer["churn_probability"] > 0.4:
+                    risk_text_class = "text-warning"
+                else:
+                    risk_text_class = "text-success"
+                
+                # Format risk percentage
+                risk_percent = int(customer["churn_probability"] * 100)
+                
+                # Add row to table
+                table_html += f"""
+                <tr class="{risk_class}">
+                    <td>{customer['customerID']}</td>
+                    <td><span class="text-xl">{churn_icon}</span></td>
+                    <td><span class="{risk_text_class} font-bold">{risk_percent}%</span></td>
+                    <td>{customer['customer_data']['tenure']}</td>
+                    <td>${customer['customer_data']['MonthlyCharges']}</td>
+                    <td>{customer['customer_data']['Contract']}</td>
+                </tr>
+                """
+            
+            # Close table
+            table_html += """
+                    </tbody>
+                </table>
+            </div>
+            """
+            
+            # Combine HTML and return
+            return HTMLResponse(summary_html + table_html)
             
         except Exception as e:
             print(f"Error predicting churn: {e}")
-            return JSONResponse({"error": str(e)}, status_code=500)
+            return HTMLResponse(f"<div class='alert alert-error'>Error processing request: {str(e)}</div>")
     
     # Return the FastHTML app
     return fasthtml_app
