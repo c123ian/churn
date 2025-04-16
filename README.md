@@ -78,3 +78,6 @@ This combines predictive power (ML), explainability (SHAP), and personalization 
 
 # 🚀 Live App [HERE](https://c123ian--email-generator-serve.modal.run/)
 
+## Sources:
+
+- [Customer Churn Kaggle Notebook](https://www.kaggle.com/code/bhartiprasad17/customer-churn-prediction/notebook#-8.-Machine-Learning-Model-Evaluations-and-Predictions)
