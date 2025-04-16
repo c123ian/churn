@@ -61,9 +61,11 @@ This project combines ML-based churn prediction with LLM-generated personalized 
    - Multi-channel extension
    - A/B testing and feedback integration
 
-## Future Improvements
-1. SHAP analysis for automatic risk identification
-2. Batch processing via CSV upload
-3. Multi-channel notifications based on preferences
-4. Performance analytics by customer segment
-5. Reinforcement learning for offer optimization
+## Future Improvements: ML + LLM
+
+1. **Predict Risk**: Voting Classifier identifies customers likely to churn
+2. **Explain Why**: SHAP values determine the key factors for each customer
+3. **Personalize Message**: LLM generates tailored emails addressing specific factors
+4. **Interface**: Both manual toggles and automated CSV batch processing
+
+This combines predictive power (ML), explainability (SHAP), and personalization (LLM) to create targeted retention campaigns that address each customer's unique reasons for potential churn.
