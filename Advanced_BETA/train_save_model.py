@@ -6,7 +6,7 @@ from sklearn.ensemble import VotingClassifier, GradientBoostingClassifier, AdaBo
 from sklearn.linear_model import LogisticRegression
 from sklearn.model_selection import train_test_split
 
-# Define app
+# Define app!
 app = modal.App("churn_model_uploader")
 
 image = (
