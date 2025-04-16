@@ -72,6 +72,7 @@ This project combines ML-based churn prediction with LLM-generated personalized 
 2. **Explain Why**: SHAP values determine the key factors for each customer
 3. **Personalize Message**: LLM generates tailored emails addressing specific factors
 4. **Interface**: Both manual toggles and automated CSV batch processing
+5. **RAG**: Ground offers in actual Vodafone PDFs about availbe prices/offers ect.
 
 This combines predictive power (ML), explainability (SHAP), and personalization (LLM) to create targeted retention campaigns that address each customer's unique reasons for potential churn.
 
