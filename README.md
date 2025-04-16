@@ -1,13 +1,15 @@
 # Telecom Churn Prevention Email Generator
 
+## **App 1: ML Churn Predictor** 
 ![APP 1](https://github.com/user-attachments/assets/e30fbfa1-a76a-490f-9bda-9e0df2ab3b66)
 
+**App 2: LLM Email Generator**
 ![APP 2](https://github.com/user-attachments/assets/3b067dec-469a-4190-9d70-113aeca34a5f)
 
 
-## 🔍 Live Applications
-- **App 1: ML Churn Predictor** - [https://c123ian--churn-predictor-serve.modal.run/](https://c123ian--churn-predictor-serve.modal.run/)
-- **App 2: LLM Email Generator** - [https://c123ian--email-generator-serve.modal.run/](https://c123ian--email-generator-serve.modal.run/)
+# 🚀 Live Applications
+- 🏃‍♀️**App 1: ML Churn Predictor** - [https://c123ian--churn-predictor-serve.modal.run/](https://c123ian--churn-predictor-serve.modal.run/)
+- 📧**App 2: LLM Email Generator** - [https://c123ian--email-generator-serve.modal.run/](https://c123ian--email-generator-serve.modal.run/)
 
 ## Project Structure & Workflow
 This project combines ML-based churn prediction with LLM-generated personalized retention emails for telecom customers.
