@@ -1,5 +1,10 @@
 # Telecom Churn Prevention Email Generator
 
+![image](https://github.com/user-attachments/assets/3b067dec-469a-4190-9d70-113aeca34a5f)
+
+
+# 🚀 Live App [HERE](https://c123ian--email-generator-serve.modal.run/)
+
 ## Project Overview
 This project combines ML-based churn prediction with LLM-generated personalized retention emails for telecom customers.
 
@@ -69,3 +74,7 @@ This project combines ML-based churn prediction with LLM-generated personalized 
 4. **Interface**: Both manual toggles and automated CSV batch processing
 
 This combines predictive power (ML), explainability (SHAP), and personalization (LLM) to create targeted retention campaigns that address each customer's unique reasons for potential churn.
+
+
+# 🚀 Live App [HERE](https://c123ian--email-generator-serve.modal.run/)
+
